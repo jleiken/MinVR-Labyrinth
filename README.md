@@ -8,4 +8,4 @@
 ```
 Made to compare Unity and YURT development!
 
-Base (including documentation, cmake stuff, MinVR, etc.) maintained by Tom Sgouros at https://github.com/tsgouros. This is "forked" from the demo-graphic repository.
+Base (including documentation, cmake stuff, MinVR, etc.) maintained by Tom Sgouros at https://github.com/tsgouros. This is "forked" from the demo-graphic repository. Instructions on how to build and run this project are maintained there.
