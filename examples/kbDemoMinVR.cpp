@@ -98,9 +98,7 @@ private:
   // These are the shapes that make up the scene.  They are out here in
   // the global variables so they can be available in both the main()
   // function and the renderScene() function.
-  bsg::drawableCompound* _axesSet;
-  bsg::drawableCollection* _plugBoard;
-  std::vector<animLine> _lines;
+  bsg::drawableCollection* _board;
 
   // These are part of the animation stuff, and again are out here with
   // the big boy global variables so they can be available to both the
@@ -111,17 +109,20 @@ private:
   // divided into several functions here, so they are class-wide
   // private data objects.
   bsg::bsgPtr<bsg::shaderMgr> _shader;
-  bsg::bsgPtr<bsg::shaderMgr> _axesShader;
   bsg::bsgPtr<bsg::lightList> _lights;
 
   // Here are the drawable objects that make up the compound object
   // that make up the scene.
-  bsg::drawableObj _axes;
   bsg::drawableObj _topShape;
   bsg::drawableObj _bottomShape;
 
   std::string _vertexFile;
   std::string _fragmentFile;
+
+  // Helpful constants
+  float _X_BOARD_OFFSET;
+  float _Y_BOARD_OFFSET;
+  float _Z_BOARD_OFFSET;
 
 
   // These functions from demo2.cpp are not needed here:
@@ -162,7 +163,8 @@ private:
     }
 
     // This is the background color of the viewport.
-    glClearColor(0.1 , 0.0, 0.4, 1.0);
+    // (gray)
+    glClearColor(0.75, 0.75, 0.75, 1.0);
 
     // Now we're ready to start issuing OpenGL calls.  Start by enabling
     // the modes we want.  The DEPTH_TEST is how you get hidden faces.
@@ -197,7 +199,7 @@ private:
   }
 
   inline glm::vec3 plugPos(const float i, const float j) {
-    return glm::vec3(-10.0f + 2.0 * i, -5.0f, -10.0 + 2.0 * j);
+    return glm::vec3(-15.0f + 3.0 * i, 0.5f, -15.0f + 3.0 * j);
   }
 
   void _initializeScene() {
@@ -230,45 +232,24 @@ private:
     texture->readFile(bsg::textureCHK, "");
     _shader->addTexture(texture);
 
-    // We could put the axes and the object in the same compound
-    // shape, but we leave them separate so they can be moved
-    // separately.
+    _board = new bsg::drawableCollection();
 
-    _plugBoard = new bsg::drawableCollection();
+    bsg::drawableObjModel* labPlane = new bsg::drawableObjModel(_shader, "../data/lab-plane.obj");
+    labPlane->setPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+    _board->addObject(labPlane);
 
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         bsg::drawableObjModel* x =
           new bsg::drawableObjModel(_shader, "../data/test-v.obj");
         x->setPosition(plugPos(i, j));
-        _plugBoard->addObject(x);
+        _board->addObject(x);
       }
     }
 
-    _plugBoard->setPosition(glm::vec3(0.0f, 0.0f, -10.0f));
-    _plugBoard->setRotation(1.57, 0.0, 0.0);
-    _scene.addObject(_plugBoard);
-
-    _axesShader->addShader(bsg::GLSHADER_VERTEX, "../shaders/shader2.vp");
-    _axesShader->addShader(bsg::GLSHADER_FRAGMENT, "../shaders/shader.fp");
-    _axesShader->compileShaders();
-
-
-    for (int i = 0; i < 10; i++) {
-
-      _lines.push_back(animLine(_axesShader,
-                                plugPos(mrand.get(10), mrand.get(10)),
-                                plugPos(mrand.get(10), mrand.get(10)),
-                                glm::vec4(1.0f, 0.5f, 0.0f, 1.0f),
-                                glm::vec4(0.0f, 0.5f, 1.0f, 1.0f)));
-
-      _plugBoard->addObject(_lines.back()._line);
-    }
-
-    _axesSet = new bsg::drawableAxes(_axesShader, 100.0f);
-
-    // Now add the axes.
-    _scene.addObject(_axesSet);
+    _board->setPosition(glm::vec3(_X_BOARD_OFFSET, _Y_BOARD_OFFSET, _Z_BOARD_OFFSET));
+    _board->setRotation(0.0, 0.0, 0.0);
+    _scene.addObject(_board);
 
     // All the shapes are now added to the scene.
 
@@ -286,10 +267,13 @@ public:
     // These are tracked separately because multiple objects might use
     // them.
     _shader = new bsg::shaderMgr();
-    _axesShader = new bsg::shaderMgr();
     _lights = new bsg::lightList();
 
     _oscillator = 0.0f;
+
+    _X_BOARD_OFFSET = -5.0;
+    _Y_BOARD_OFFSET = -10.0;
+    _Z_BOARD_OFFSET = -20.0;
 
   }
 
@@ -323,13 +307,6 @@ public:
   /// for example a stereo view has two renders, with the same render
   /// context.
   void onVRRenderContext(const VRState &renderState) {
-
-    // std::cout << "entering graphics context:" << renderState << std::endl;
-
-    for (int i = 0; i < _lines.size(); i++) {
-      _lines[i].startAnim(plugPos(mrand.get(10),mrand.get(10)));
-      _lines[i].step();
-    }
 
     // Check if this is the first call.  If so, do some initialization.
     if ((int)renderState.getValue("InitRender") == 1) {
