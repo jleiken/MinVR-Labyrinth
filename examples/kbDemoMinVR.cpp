@@ -18,30 +18,21 @@ private:
 	bsg::drawableCollection* _board;
 	bsg::drawableSphere* _ball;
 
+	// shader files we're going to need
+	std::string _vertexFile;
+	std::string _fragmentFile;
+
 	// These are part of the animation stuff, and again are out here with
 	// the big boy global variables so they can be available to both the
 	// interrupt handler and the render function.
 	float _oscillator;
 
-	// These variables were not global before, but their scope has been
-	// divided into several functions here, so they are class-wide
-	// private data objects.
-	bsg::bsgPtr<bsg::shaderMgr> _boardShader;
-	bsg::bsgPtr<bsg::shaderMgr> _ballShader;
-	bsg::bsgPtr<bsg::lightList> _lights;
-
-	// Here are the drawable objects that make up the compound object
-	// that make up the scene.
-	bsg::drawableObj _topShape;
-	bsg::drawableObj _bottomShape;
-
-	std::string _vertexFile;
-	std::string _fragmentFile;
-
 	// Helpful constants
 	float _X_BOARD_OFFSET;
 	float _Y_BOARD_OFFSET;
 	float _Z_BOARD_OFFSET;
+	int _NUM_HOLES;
+	int _NUM_WALLS;
 
 	// This contains a bunch of sanity checks from the graphics
 	// initialization of demo2.cpp.  They are still useful with MinVR.
@@ -100,43 +91,85 @@ private:
 	}
 
 	void _initializeScene() {
+		// initialize the shaders and lights
+		bsg::bsgPtr<bsg::shaderMgr> _boardShader = new bsg::shaderMgr();
+		bsg::bsgPtr<bsg::shaderMgr> _holeShader = new bsg::shaderMgr();
+		bsg::bsgPtr<bsg::shaderMgr> _winShader = new bsg::shaderMgr();
+		bsg::bsgPtr<bsg::shaderMgr> _ballShader = new bsg::shaderMgr();
+		bsg::bsgPtr<bsg::lightList> _lights = new bsg::lightList();
 
-		// Create a list of lights.  If the shader you're using doesn't use
-		// lighting, and the shapes don't have textures, this is irrelevant.
-		_lights->addLight(glm::vec4(0.0f, 0.0f, 3.0f, 1.0f),
-											glm::vec4(1.0f, 1.0f, 0.0f, 0.0f));
+		// Create a list of lights
+		_lights->addLight(glm::vec4(_X_BOARD_OFFSET, _Y_BOARD_OFFSET + 15, _Z_BOARD_OFFSET, 1.0f),
+						  glm::vec4(1.0f, 1.0f, 1.0f, 0.0f));
+		_lights->addLight(glm::vec4(_X_BOARD_OFFSET - 5, _Y_BOARD_OFFSET + 15, _Z_BOARD_OFFSET - 5, 1.0f),
+						  glm::vec4(1.0f, 1.0f, 1.0f, 0.0f));
+		_lights->addLight(glm::vec4(_X_BOARD_OFFSET + 5, _Y_BOARD_OFFSET + 15, _Z_BOARD_OFFSET + 5, 1.0f),
+						  glm::vec4(1.0f, 1.0f, 1.0f, 0.0f));
 
 		_boardShader->addLights(_lights);
-
-
-		_vertexFile = "../shaders/shader2.vp";
-		_fragmentFile = "../shaders/shader.fp";
+		_holeShader->addLights(_lights);
+		_winShader->addLights(_lights);
+		_ballShader->addLights(_lights);
 
 		_boardShader->addShader(bsg::GLSHADER_VERTEX, _vertexFile);
 		_boardShader->addShader(bsg::GLSHADER_FRAGMENT, _fragmentFile);
+		_holeShader->addShader(bsg::GLSHADER_VERTEX, _vertexFile);
+		_holeShader->addShader(bsg::GLSHADER_FRAGMENT, _fragmentFile);
+		_winShader->addShader(bsg::GLSHADER_VERTEX, _vertexFile);
+		_winShader->addShader(bsg::GLSHADER_FRAGMENT, _fragmentFile);
+		_ballShader->addShader(bsg::GLSHADER_VERTEX, _vertexFile);
+		_ballShader->addShader(bsg::GLSHADER_FRAGMENT, _fragmentFile);
 
 		// The shaders are loaded, now compile them.
 		_boardShader->compileShaders();
+		_holeShader->compileShaders();
+		_winShader->compileShaders();
+		_ballShader->compileShaders();
 
-		// Add a texture to our shader manager object.
-		bsg::bsgPtr<bsg::textureMgr> texture = new bsg::textureMgr();
-
-		texture->readFile(bsg::texturePNG, "../data/board-color.png");
-		_boardShader->addTexture(texture);
+		// Add a texture (just color for now) to the board objects
+		bsg::bsgPtr<bsg::textureMgr> boardTexture = new bsg::textureMgr();
+		boardTexture->readFile(bsg::texturePNG, "../data/board.png");
+		_boardShader->addTexture(boardTexture);
 
 		_board = new bsg::drawableCollection();
 
-		glm::vec4* boardColor = new glm::vec4(0.6f, 0.4f, 0.2f, 0.0f);
-
 		int x_offset, z_offset;
-		for (int i = 0; i < 75; i++) {
+		for (int i = 0; i < _NUM_WALLS; i++) {
 			bsg::drawableObjModel* x =
 				new bsg::drawableObjModel(_boardShader, "../data/mid-wall.obj");
 			x_offset = rand() % 30;
 			z_offset = rand() % 30;
-			x->setPosition(glm::vec3(-15.0f + x_offset, 0.5f, -15.0f + z_offset));
+			x->setPosition(glm::vec3(-15.0f + x_offset, 0, -15.0f + z_offset));
 			_board->addObject(x);
 		}
+
+		// Add a texture to the holes
+		bsg::bsgPtr<bsg::textureMgr> holeTexture = new bsg::textureMgr();
+		holeTexture->readFile(bsg::texturePNG, "../data/hole.png");
+		_holeShader->addTexture(holeTexture);
+
+		float y_offset = _Y_BOARD_OFFSET+20.1f;
+		for (int i = 0; i < _NUM_HOLES; i++) {
+			bsg::drawableCircle* x = new bsg::drawableCircle(_holeShader, 25, 1.0f, _Y_BOARD_OFFSET);
+			x->setScale(glm::vec3(2.0f, 1.0f, 2.0f));
+			x_offset = rand() % 27;
+			z_offset = rand() % 27;
+			x->setPosition(glm::vec3(-15.0f + x_offset, y_offset, -15.0f + z_offset));
+			_board->addObject(x);
+		}
+
+		bsg::bsgPtr<bsg::textureMgr> winTexture = new bsg::textureMgr();
+		winTexture->readFile(bsg::texturePNG, "../data/win.png");
+		_winShader->addTexture(winTexture);
+		x_offset = rand() % 25;
+		z_offset = rand() % 25;
+		y_offset = _Y_BOARD_OFFSET+10.2f;
+		bsg::drawableSquare* x = new bsg::drawableSquare(_winShader, 25, 
+				glm::vec3(-15.0f + x_offset, y_offset, -15.0f + z_offset),
+				glm::vec3(-15.0f + x_offset, y_offset, -15.0f + z_offset + 5),
+				glm::vec3(-15.0f + x_offset + 5, y_offset, -15.0f + z_offset),
+				glm::vec4(0, 1, 0, 1));
+		_board->addObject(x);
 
 		// Might potentially need to change the shader here
  		bsg::drawableObjModel* labPlane = new bsg::drawableObjModel(_boardShader, "../data/lab-plane.obj");
@@ -148,19 +181,14 @@ private:
 		_scene.addObject(_board);
 
 		// make a new shader for the ball
-		std::cout << "pre ball" << endl;
-		_ballShader->addShader(bsg::GLSHADER_VERTEX, _vertexFile);
-		_ballShader->addShader(bsg::GLSHADER_FRAGMENT, _fragmentFile);
-		_ballShader->compileShaders();
-		std::cout << "post compile" << endl;
-		texture = new bsg::textureMgr();
-		texture->readFile(bsg::texturePNG, "../data/ball-color.png");
-		_ballShader->addTexture(texture);
-		std::cout << "post texture" << endl;
+		bsg::bsgPtr<bsg::textureMgr> ballTexture = new bsg::textureMgr();
+		ballTexture->readFile(bsg::texturePNG, "../data/ball.png");
+		_ballShader->addTexture(ballTexture);
 
 		x_offset = (rand() % 20) - 10;
 		z_offset = (rand() % 20) - 10;
 		_ball = new bsg::drawableSphere(_ballShader, 25, 25, glm::vec4(0.5f, 0.5f, 0.5f, 0.0f));
+		_ball->setScale(glm::vec3(1.5f, 1.5f, 1.5f));
 		_ball->setPosition(glm::vec3(_X_BOARD_OFFSET + x_offset, _Y_BOARD_OFFSET + 10, _Z_BOARD_OFFSET + z_offset));
 		_scene.addObject(_ball);
 	}
@@ -172,17 +200,16 @@ public:
 		// This is the root of the scene graph.
 		bsg::scene _scene = bsg::scene();
 
-		// These are tracked separately because multiple objects might use them.
-		_boardShader = new bsg::shaderMgr();
-		_ballShader = new bsg::shaderMgr();
-		_lights = new bsg::lightList();
+		_vertexFile = "../shaders/textureShader.vp";
+		_fragmentFile = "../shaders/textureShader.fp";
 
 		_oscillator = 0.0f;
 
 		_X_BOARD_OFFSET = -5.0;
 		_Y_BOARD_OFFSET = -10.0;
 		_Z_BOARD_OFFSET = -20.0;
-
+		_NUM_WALLS = 80;
+		_NUM_HOLES = 10;
 	}
 
 	/// The MinVR apparatus invokes this method whenever there is a new
