@@ -222,9 +222,12 @@ public:
 		// if (event.getName() != "FrameStart") {
 		// 	std::cout << "Hearing event:" << event << std::endl;
 		// }
-		if (event.getName() == "HandTracker_Move") {
+		if (event.getName() == "Wand_Move") {
 			// the user is holding the activate tilt button and is moving
-			std::cout << "Hand Move: " << event.getValue() << std::endl;
+			MinVR::VRFloatArray arr = event.getValue("Transform");
+			for (int i = 0; i < arr.size(); i++) {
+				std::cout << "Wand Move: " << i << " : " << arr[i] << std::endl;
+			}
 		} else if (event.getName() == "KbdEsc_Down") {
 			// Quit if the escape button is pressed
 			shutdown();

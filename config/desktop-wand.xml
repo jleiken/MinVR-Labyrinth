@@ -16,7 +16,7 @@
 
   <Desktop hostType="VRStandAlone">
 		<FakeHand inputdeviceType="VRFakeTrackerDevice">
-			<TrackerName>HandTracker</TrackerName>
+			<TrackerName>Wand</TrackerName>
 			<ToggleOnOffEvent>Kbd1_Down</ToggleOnOffEvent>
 			<XYTranslationScale>2.0</XYTranslationScale>
 			<ZTranslationScale>2.0</ZTranslationScale>

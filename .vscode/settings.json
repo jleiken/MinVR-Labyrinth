@@ -14,6 +14,7 @@
         "string_view": "cpp",
         "vector": "cpp",
         "ios": "cpp",
-        "functional": "cpp"
+        "functional": "cpp",
+        "map": "cpp"
     }
 }
