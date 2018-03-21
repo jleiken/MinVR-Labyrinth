@@ -26,6 +26,8 @@ private:
 	// the big boy global variables so they can be available to both the
 	// interrupt handler and the render function.
 	float _oscillator;
+	float _ballVelocity;
+	bool _controlOn;
 
 	// Helpful constants
 	float _X_BOARD_OFFSET;
@@ -195,8 +197,8 @@ private:
 
 
 public:
-	DemoVRApp(int argc, char** argv) :
-		MVRDemo(argc, argv) {
+	DemoVRApp(int argc, char** argv) 
+	: MVRDemo(argc, argv) {
 		// This is the root of the scene graph.
 		bsg::scene _scene = bsg::scene();
 
@@ -204,6 +206,8 @@ public:
 		_fragmentFile = "../shaders/textureShader.fp";
 
 		_oscillator = 0.0f;
+		_ballVelocity = 0.0f;
+		_controlOn = false;
 
 		_X_BOARD_OFFSET = -5.0;
 		_Y_BOARD_OFFSET = -10.0;
@@ -215,17 +219,19 @@ public:
 	/// The MinVR apparatus invokes this method whenever there is a new
 	/// event to process.
 	void onVREvent(const MinVR::VREvent &event) {
-
-		//std::cout << "Hearing event:" << event << std::endl;
-
-		// The "FrameStart" heartbeat event recurs at regular intervals,
-		// so you can do animation here, as well as in the render
-		// function.
-
-		// Quit if the escape button is pressed
-		if (event.getName() == "KbdEsc_Down") {
+		// if (event.getName() != "FrameStart") {
+		// 	std::cout << "Hearing event:" << event << std::endl;
+		// }
+		if (event.getName() == "HandTracker_Move") {
+			// the user is holding the activate tilt button and is moving
+			std::cout << "Hand Move: " << event.getValue() << std::endl;
+		} else if (event.getName() == "KbdEsc_Down") {
+			// Quit if the escape button is pressed
 			shutdown();
 		} else if (event.getName() == "FrameStart") {
+			// The "FrameStart" heartbeat event recurs at regular intervals,
+			// so you can do animation here, as well as in the render
+			// function.
 			_oscillator = event.getValue("ElapsedSeconds");
 		}
 	}
@@ -258,12 +264,12 @@ public:
 	/// re-draws the scene according to whatever has changed since the
 	/// last time it was drawn.
 	void onVRRenderScene(const VRState &renderState) {
+			// Make scene changes here
+			glm::vec3 loc = _ball->getPosition();
+			_ball->setPosition(loc.x, loc.y + _ballVelocity, loc.z);
+			_ballVelocity -= 0.005f;
 
-			// If you want to adjust the positions of the various objects in
-			// your scene, you can do that here.
-
-			// Now the preliminaries are done, on to the actual drawing.
-
+			// Now draw the scene
 			// First clear the display.
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
@@ -304,10 +310,7 @@ int main(int argc, char **argv) {
 
 
 	// Initialize the app.
-	argv[0] = (char*)"bin/kbDemoMinVR";
-	argv[1] = (char*)"-c";
-	argv[2] = (char*)"../config/desktop-freeglut.xml";
-	DemoVRApp app(3, argv);
+	DemoVRApp app(argc, argv);
 
 	// Run it.
 	app.run();
