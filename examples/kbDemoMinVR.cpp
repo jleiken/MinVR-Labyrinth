@@ -27,12 +27,11 @@ private:
 	// interrupt handler and the render function.
 	float _oscillator;
 	float _ballVelocity;
-	bool _controlOn;
+	bool _inited;
 
 	// Helpful constants
-	float _X_BOARD_OFFSET;
-	float _Y_BOARD_OFFSET;
-	float _Z_BOARD_OFFSET;
+	float _BOARD_X_OFFSET, _BOARD_Y_OFFSET, _BOARD_Z_OFFSET;
+	float _WAND_X_OFFSET, _WAND_Y_OFFSET, _WAND_Z_OFFSET;
 	int _NUM_HOLES;
 	int _NUM_WALLS;
 
@@ -101,11 +100,11 @@ private:
 		bsg::bsgPtr<bsg::lightList> _lights = new bsg::lightList();
 
 		// Create a list of lights
-		_lights->addLight(glm::vec4(_X_BOARD_OFFSET, _Y_BOARD_OFFSET + 15, _Z_BOARD_OFFSET, 1.0f),
+		_lights->addLight(glm::vec4(_BOARD_X_OFFSET, _BOARD_Y_OFFSET + 15, _BOARD_Z_OFFSET, 1.0f),
 						  glm::vec4(1.0f, 1.0f, 1.0f, 0.0f));
-		_lights->addLight(glm::vec4(_X_BOARD_OFFSET - 5, _Y_BOARD_OFFSET + 15, _Z_BOARD_OFFSET - 5, 1.0f),
+		_lights->addLight(glm::vec4(_BOARD_X_OFFSET - 5, _BOARD_Y_OFFSET + 15, _BOARD_Z_OFFSET - 5, 1.0f),
 						  glm::vec4(1.0f, 1.0f, 1.0f, 0.0f));
-		_lights->addLight(glm::vec4(_X_BOARD_OFFSET + 5, _Y_BOARD_OFFSET + 15, _Z_BOARD_OFFSET + 5, 1.0f),
+		_lights->addLight(glm::vec4(_BOARD_X_OFFSET + 5, _BOARD_Y_OFFSET + 15, _BOARD_Z_OFFSET + 5, 1.0f),
 						  glm::vec4(1.0f, 1.0f, 1.0f, 0.0f));
 
 		_boardShader->addLights(_lights);
@@ -141,7 +140,7 @@ private:
 				new bsg::drawableObjModel(_boardShader, "../data/mid-wall.obj");
 			x_offset = rand() % 30;
 			z_offset = rand() % 30;
-			x->setPosition(glm::vec3(-15.0f + x_offset, 0, -15.0f + z_offset));
+			x->setPosition(-15.0f + x_offset, 0, -15.0f + z_offset);
 			_board->addObject(x);
 		}
 
@@ -150,13 +149,13 @@ private:
 		holeTexture->readFile(bsg::texturePNG, "../data/hole.png");
 		_holeShader->addTexture(holeTexture);
 
-		float y_offset = _Y_BOARD_OFFSET+20.1f;
+		float y_offset = _BOARD_Y_OFFSET+20.1f;
 		for (int i = 0; i < _NUM_HOLES; i++) {
-			bsg::drawableCircle* x = new bsg::drawableCircle(_holeShader, 25, 1.0f, _Y_BOARD_OFFSET);
+			bsg::drawableCircle* x = new bsg::drawableCircle(_holeShader, 25, 1.0f, _BOARD_Y_OFFSET);
 			x->setScale(glm::vec3(2.0f, 1.0f, 2.0f));
-			x_offset = rand() % 27;
-			z_offset = rand() % 27;
-			x->setPosition(glm::vec3(-15.0f + x_offset, y_offset, -15.0f + z_offset));
+			x_offset = rand() % 25;
+			z_offset = rand() % 25;
+			x->setPosition(-15.0f + x_offset, y_offset, -15.0f + z_offset);
 			_board->addObject(x);
 		}
 
@@ -165,7 +164,7 @@ private:
 		_winShader->addTexture(winTexture);
 		x_offset = rand() % 25;
 		z_offset = rand() % 25;
-		y_offset = _Y_BOARD_OFFSET+10.2f;
+		y_offset = _BOARD_Y_OFFSET+10.2f;
 		bsg::drawableSquare* x = new bsg::drawableSquare(_winShader, 25, 
 				glm::vec3(-15.0f + x_offset, y_offset, -15.0f + z_offset),
 				glm::vec3(-15.0f + x_offset, y_offset, -15.0f + z_offset + 5),
@@ -175,11 +174,11 @@ private:
 
 		// Might potentially need to change the shader here
  		bsg::drawableObjModel* labPlane = new bsg::drawableObjModel(_boardShader, "../data/lab-plane.obj");
-		labPlane->setPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+		labPlane->setPosition(0, 0, 0);
 		_board->addObject(labPlane);
 
-		_board->setPosition(glm::vec3(_X_BOARD_OFFSET, _Y_BOARD_OFFSET, _Z_BOARD_OFFSET));
-		_board->setRotation(0.0, 0.0, 0.0);
+		_board->setPosition(_BOARD_X_OFFSET, _BOARD_Y_OFFSET, _BOARD_Z_OFFSET);
+		_board->setRotation(0, 0, 0);
 		_scene.addObject(_board);
 
 		// make a new shader for the ball
@@ -191,8 +190,11 @@ private:
 		z_offset = (rand() % 20) - 10;
 		_ball = new bsg::drawableSphere(_ballShader, 25, 25, glm::vec4(0.5f, 0.5f, 0.5f, 0.0f));
 		_ball->setScale(glm::vec3(1.5f, 1.5f, 1.5f));
-		_ball->setPosition(glm::vec3(_X_BOARD_OFFSET + x_offset, _Y_BOARD_OFFSET + 10, _Z_BOARD_OFFSET + z_offset));
+		_ball->setPosition(_BOARD_X_OFFSET + x_offset, _BOARD_Y_OFFSET + 10, _BOARD_Z_OFFSET + z_offset);
 		_scene.addObject(_ball);
+
+		// set inited to true so other functions know we've been initialized
+		_inited = true;
 	}
 
 
@@ -207,13 +209,16 @@ public:
 
 		_oscillator = 0.0f;
 		_ballVelocity = 0.0f;
-		_controlOn = false;
 
-		_X_BOARD_OFFSET = -5.0;
-		_Y_BOARD_OFFSET = -10.0;
-		_Z_BOARD_OFFSET = -20.0;
+		_BOARD_X_OFFSET = -5.0;
+		_BOARD_Y_OFFSET = -10.0;
+		_BOARD_Z_OFFSET = -20.0;
+		_WAND_X_OFFSET = -10.0;
+		_WAND_Y_OFFSET = -12.0;
+		_WAND_Z_OFFSET = -35.0;
 		_NUM_WALLS = 80;
 		_NUM_HOLES = 10;
+		_inited = false;
 	}
 
 	/// The MinVR apparatus invokes this method whenever there is a new
@@ -222,12 +227,20 @@ public:
 		// if (event.getName() != "FrameStart") {
 		// 	std::cout << "Hearing event:" << event << std::endl;
 		// }
-		if (event.getName() == "Wand_Move") {
+		if (event.getName() == "Wand_Move" && _inited) {
 			// the user is holding the activate tilt button and is moving
 			MinVR::VRFloatArray arr = event.getValue("Transform");
 			for (int i = 0; i < arr.size(); i++) {
 				std::cout << "Wand Move: " << i << " : " << arr[i] << std::endl;
 			}
+			// rotation is at 0,1,2 and 4,5,6 and 8,9,10?
+			_board->setRotation(arr[0]+arr[1]+arr[2], 
+								arr[4]+arr[5]+arr[6],
+								arr[8]+arr[9]+arr[10]);
+			// positions are at 12,13,14
+			_board->setPosition(arr[12]+_WAND_X_OFFSET,
+								arr[13]+_WAND_Y_OFFSET,
+								arr[14]+_WAND_Z_OFFSET);
 		} else if (event.getName() == "KbdEsc_Down") {
 			// Quit if the escape button is pressed
 			shutdown();
