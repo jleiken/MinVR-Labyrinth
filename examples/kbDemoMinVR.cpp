@@ -197,6 +197,16 @@ private:
 		_inited = true;
 	}
 
+	float _keepRotationLow(float rot) {
+		if (rot < -0.33) {
+			return -0.33;
+		} else if (rot > 0.33) {
+			return 0.33;
+		} else {
+			return rot;
+		}
+	}
+
 
 public:
 	DemoVRApp(int argc, char** argv) 
@@ -233,14 +243,14 @@ public:
 			for (int i = 0; i < arr.size(); i++) {
 				std::cout << "Wand Move: " << i << " : " << arr[i] << std::endl;
 			}
-			// rotation is at 0,1,2 and 4,5,6 and 8,9,10?
-			_board->setRotation(arr[0]+arr[1]+arr[2], 
-								arr[4]+arr[5]+arr[6],
-								arr[8]+arr[9]+arr[10]);
 			// positions are at 12,13,14
 			_board->setPosition(arr[12]+_WAND_X_OFFSET,
 								arr[13]+_WAND_Y_OFFSET,
 								arr[14]+_WAND_Z_OFFSET);
+			// rotation is at 0,1,2 and 4,5,6 and 8,9,10?
+			float x = _keepRotationLow(-arr[8]);
+			float z = _keepRotationLow(arr[0]);
+			_board->setRotation(x, 0, z);
 		} else if (event.getName() == "KbdEsc_Down") {
 			// Quit if the escape button is pressed
 			shutdown();
