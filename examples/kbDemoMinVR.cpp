@@ -27,7 +27,9 @@ private:
 	// the big boy global variables so they can be available to both the
 	// interrupt handler and the render function.
 	float _oscillator;
-	float _ballVelocity;
+	float _xVelocity;
+	float _yVelocity;
+	float _zVelocity;
 	bool _inited;
 
 	// Helpful constants
@@ -150,9 +152,9 @@ private:
 		holeTexture->readFile(bsg::texturePNG, "../data/hole.png");
 		_holeShader->addTexture(holeTexture);
 
-		float y_offset = _BOARD_Y_OFFSET+20.1f;
+		float y_offset = 0.1f;
 		for (int i = 0; i < _NUM_HOLES; i++) {
-			bsg::drawableCircle* x = new bsg::drawableCircle(_holeShader, 25, 1.0f, _BOARD_Y_OFFSET);
+			bsg::drawableCircle* x = new bsg::drawableCircle(_holeShader, 25, 1.0f, 0);
 			x->setScale(glm::vec3(2.0f, 1.0f, 2.0f));
 			x_offset = rand() % 25;
 			z_offset = rand() % 25;
@@ -165,7 +167,6 @@ private:
 		_winShader->addTexture(winTexture);
 		x_offset = rand() % 25;
 		z_offset = rand() % 25;
-		y_offset = _BOARD_Y_OFFSET+10.2f;
 		_win = new bsg::drawableSquare(_winShader, 25, 
 				glm::vec3(-15.0f + x_offset, y_offset, -15.0f + z_offset),
 				glm::vec3(-15.0f + x_offset, y_offset, -15.0f + z_offset + 5),
@@ -212,24 +213,22 @@ private:
 	bool insideCustomBoundingBox(const glm::vec4 &testPoint,
 								 glm::mat4 modelMatrix,
                                  bsg::drawableObj* obj,
-								 bool is2dObj,
-								 bool isPlane) {
+								 bool is2dObj) {
 		glm::vec4 lower = modelMatrix * obj->getBoundingBoxLower();
 		glm::vec4 upper = modelMatrix * obj->getBoundingBoxUpper();
 
 		if (is2dObj) {
 			// if (isPlane) {
-			// 	cout << "up x: " << upper.x << " low x: " << lower.x << endl;
-			// 	cout << "ball x: " << testPoint.x << endl;
-			// 	//cout << "up z: " << upper.z << " low z: " << lower.z << endl;
+			// 	cout << "low y: " << lower.y << " up y: " << upper.y << endl;
+			// 	cout << " ball y: " << testPoint.y << endl;
 			// }
 			return
 				(testPoint.x <= upper.x) &&
 				(testPoint.x >= lower.x) &&
 				(testPoint.z <= upper.z) &&
 				(testPoint.z >= lower.z) &&
-				((std::abs(testPoint.y - lower.y) < 2) || 
-				(std::abs(testPoint.y - upper.y) < 2));
+				((std::abs(testPoint.y - lower.y) < 1) || 
+				(std::abs(testPoint.y - upper.y) < 1));
 		} else {
 			return
 				(testPoint.x <= upper.x) &&
@@ -252,7 +251,7 @@ public:
 		_fragmentFile = "../shaders/textureShader.fp";
 
 		_oscillator = 0.0f;
-		_ballVelocity = 0.0f;
+		_yVelocity = 0.0f;
 
 		_BOARD_X_OFFSET = -5.0;
 		_BOARD_Y_OFFSET = -10.0;
@@ -280,7 +279,7 @@ public:
 								arr[13]+_WAND_Y_OFFSET,
 								arr[14]+_WAND_Z_OFFSET);
 			// rotation is at 0,1,2 and 4,5,6 and 8,9,10?
-			float x = _keepRotationLow(-arr[8]);
+			float x = _keepRotationLow(arr[8]);
 			float z = _keepRotationLow(arr[0]);
 			_board->setRotation(x, 0, z);
 		} else if (event.getName() == "KbdEsc_Down") {
@@ -324,8 +323,19 @@ public:
 	void onVRRenderScene(const VRState &renderState) {
 			// Make the ball fall
 			glm::vec3 loc = _ball->getPosition();
-			_ball->setPosition(loc.x, loc.y + _ballVelocity, loc.z);
-			_ballVelocity -= 0.005f;
+			loc.x += _xVelocity;
+			loc.y += _yVelocity;
+			loc.z += _zVelocity;
+			_ball->setPosition(loc.x, loc.y, loc.z);
+			glm::vec3 boardRot = _board->getPitchYawRoll();
+			_xVelocity += (-boardRot.x * 0.10);
+			_yVelocity -= 0.005f;
+			_zVelocity += (boardRot.z * 0.10);
+
+			glm::vec4 loc4;
+			loc4.x = loc.x;
+			loc4.y = loc.y;
+			loc4.z = loc.z;
 
 			// check if the ball has fallen into the board
 			for (auto comp = _board->begin(); comp != _board->end(); comp++) {
@@ -334,11 +344,10 @@ public:
 				bool is2d = multi->printObj("").find("square") != 0 
 						 || multi->printObj("").find("circle") != 0
 						 || multi->printObj("").find("plane") != 0;
-				bool isPlane = multi->printObj("").find("plane") != 0;
 				for (auto it = lst.begin(); it != lst.end(); it++) {
 					bsg::drawableObj* obj = it->ptr();
-					if (insideCustomBoundingBox(_ball->getWorldPosition(), multi->getModelMatrix(), obj, is2d, isPlane)) {
-						_ballVelocity = 0;
+					if (insideCustomBoundingBox(loc4, multi->getModelMatrix(), obj, is2d)) {
+						_xVelocity = 0, _yVelocity = 0, _zVelocity = 0;
 					}
 				}
 			}
