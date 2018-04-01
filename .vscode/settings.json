@@ -15,6 +15,17 @@
         "vector": "cpp",
         "ios": "cpp",
         "functional": "cpp",
-        "map": "cpp"
+        "map": "cpp",
+        "__split_buffer": "cpp",
+        "__tree": "cpp",
+        "bitset": "cpp",
+        "list": "cpp",
+        "set": "cpp",
+        "utility": "cpp",
+        "__bit_reference": "cpp",
+        "ostream": "cpp",
+        "iostream": "cpp",
+        "__string": "cpp",
+        "memory": "cpp"
     }
 }

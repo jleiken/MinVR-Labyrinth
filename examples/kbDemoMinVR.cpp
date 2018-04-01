@@ -17,6 +17,7 @@ private:
 	// function and the renderScene() function.
 	bsg::drawableCollection* _board;
 	bsg::drawableSphere* _ball;
+	bsg::drawableSquare* _win;
 
 	// shader files we're going to need
 	std::string _vertexFile;
@@ -165,15 +166,16 @@ private:
 		x_offset = rand() % 25;
 		z_offset = rand() % 25;
 		y_offset = _BOARD_Y_OFFSET+10.2f;
-		bsg::drawableSquare* x = new bsg::drawableSquare(_winShader, 25, 
+		_win = new bsg::drawableSquare(_winShader, 25, 
 				glm::vec3(-15.0f + x_offset, y_offset, -15.0f + z_offset),
 				glm::vec3(-15.0f + x_offset, y_offset, -15.0f + z_offset + 5),
 				glm::vec3(-15.0f + x_offset + 5, y_offset, -15.0f + z_offset),
 				glm::vec4(0, 1, 0, 1));
-		_board->addObject(x);
+		_board->addObject(_win);
 
-		// Might potentially need to change the shader here
+		// Add the board outline and the 3D base so coliders work
  		bsg::drawableObjModel* labPlane = new bsg::drawableObjModel(_boardShader, "../data/lab-plane.obj");
+		labPlane->setName("plane");
 		labPlane->setPosition(0, 0, 0);
 		_board->addObject(labPlane);
 
@@ -204,6 +206,38 @@ private:
 			return 0.33;
 		} else {
 			return rot;
+		}
+	}
+
+	bool insideCustomBoundingBox(const glm::vec4 &testPoint,
+								 glm::mat4 modelMatrix,
+                                 bsg::drawableObj* obj,
+								 bool is2dObj,
+								 bool isPlane) {
+		glm::vec4 lower = modelMatrix * obj->getBoundingBoxLower();
+		glm::vec4 upper = modelMatrix * obj->getBoundingBoxUpper();
+
+		if (is2dObj) {
+			// if (isPlane) {
+			// 	cout << "up x: " << upper.x << " low x: " << lower.x << endl;
+			// 	cout << "ball x: " << testPoint.x << endl;
+			// 	//cout << "up z: " << upper.z << " low z: " << lower.z << endl;
+			// }
+			return
+				(testPoint.x <= upper.x) &&
+				(testPoint.x >= lower.x) &&
+				(testPoint.z <= upper.z) &&
+				(testPoint.z >= lower.z) &&
+				((std::abs(testPoint.y - lower.y) < 2) || 
+				(std::abs(testPoint.y - upper.y) < 2));
+		} else {
+			return
+				(testPoint.x <= upper.x) &&
+				(testPoint.x >= lower.x) &&
+				(testPoint.y <= upper.y) &&
+				(testPoint.y >= lower.y) &&
+				(testPoint.z <= upper.z) &&
+				(testPoint.z >= lower.z);
 		}
 	}
 
@@ -240,9 +274,7 @@ public:
 		if (event.getName() == "Wand_Move" && _inited) {
 			// the user is holding the activate tilt button and is moving
 			MinVR::VRFloatArray arr = event.getValue("Transform");
-			for (int i = 0; i < arr.size(); i++) {
-				std::cout << "Wand Move: " << i << " : " << arr[i] << std::endl;
-			}
+			// apply all transformations
 			// positions are at 12,13,14
 			_board->setPosition(arr[12]+_WAND_X_OFFSET,
 								arr[13]+_WAND_Y_OFFSET,
@@ -279,7 +311,7 @@ public:
 			_scene.prepare();
 		}
 
-	 // Load the scene models to the GPU.
+	 	// Load the scene models to the GPU.
 		_scene.load();
 	}
 
@@ -290,10 +322,26 @@ public:
 	/// re-draws the scene according to whatever has changed since the
 	/// last time it was drawn.
 	void onVRRenderScene(const VRState &renderState) {
-			// Make scene changes here
+			// Make the ball fall
 			glm::vec3 loc = _ball->getPosition();
 			_ball->setPosition(loc.x, loc.y + _ballVelocity, loc.z);
 			_ballVelocity -= 0.005f;
+
+			// check if the ball has fallen into the board
+			for (auto comp = _board->begin(); comp != _board->end(); comp++) {
+				bsg::bsgPtr<bsg::drawableMulti> multi = comp->second;
+				bsg::DrawableObjList lst = multi->getDrawableObjList();
+				bool is2d = multi->printObj("").find("square") != 0 
+						 || multi->printObj("").find("circle") != 0
+						 || multi->printObj("").find("plane") != 0;
+				bool isPlane = multi->printObj("").find("plane") != 0;
+				for (auto it = lst.begin(); it != lst.end(); it++) {
+					bsg::drawableObj* obj = it->ptr();
+					if (insideCustomBoundingBox(_ball->getWorldPosition(), multi->getModelMatrix(), obj, is2d, isPlane)) {
+						_ballVelocity = 0;
+					}
+				}
+			}
 
 			// Now draw the scene
 			// First clear the display.

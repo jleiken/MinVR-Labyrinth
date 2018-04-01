@@ -767,6 +767,10 @@ class bsgName : public std::list<std::string> {
 /// hierarchy of the scene graph.
 typedef std::list<bsgName> bsgNameList;
 
+/// \brief A list of drawableObjs.
+/// Use this type to keep all of the drawableObjs in a compound object
+typedef std::list<bsgPtr<drawableObj> > DrawableObjList;
+
 /// \brief An abstract class to handle transformation matrices.
 ///
 /// This class is the common root of drawableCompound and
@@ -906,6 +910,8 @@ class drawableMulti {
     return insideBoundingBox(glm::vec4(testPoint, 1.0));
   }
 
+  virtual DrawableObjList getDrawableObjList() { return *(new DrawableObjList); }
+
   /// \brief Returns the names involved in this object.
   ///
   ///
@@ -1012,7 +1018,6 @@ class drawableCompound : public drawableMulti {
  protected:
 
   /// The list of objects that make up this compound object.
-  typedef std::list<bsgPtr<drawableObj> > DrawableObjList;
   DrawableObjList _objects;
 
   /// The shader that will be used to render all the pieces of this
@@ -1129,6 +1134,8 @@ class drawableCompound : public drawableMulti {
   /// sub-objects, this will return a non-empty name list.  (It's not
   /// empty, but the bsgName it contains is empty.)
   bsgNameList insideBoundingBox(const glm::vec4 &testPoint);
+
+  DrawableObjList getDrawableObjList() { return _objects; }
 
   /// \brief A printable representation of the object.
   std::string printObj(const std::string &prefix) const {
