@@ -328,9 +328,9 @@ public:
 			loc.z += _zVelocity;
 			_ball->setPosition(loc.x, loc.y, loc.z);
 			glm::vec3 boardRot = _board->getPitchYawRoll();
-			_xVelocity += (-boardRot.x * 0.10);
+			_xVelocity += (-boardRot.x * 0.010);
 			_yVelocity -= 0.005f;
-			_zVelocity += (boardRot.z * 0.10);
+			_zVelocity += (boardRot.z * 0.010);
 
 			glm::vec4 loc4;
 			loc4.x = loc.x;
@@ -344,8 +344,17 @@ public:
 				bool is2d = multi->printObj("").find("square") != 0 
 						 || multi->printObj("").find("circle") != 0
 						 || multi->printObj("").find("plane") != 0;
+				if (multi->printObj("").find("<drawableCompound:plane>") == 0) {
+					cout << "start" << endl;
+				}
 				for (auto it = lst.begin(); it != lst.end(); it++) {
 					bsg::drawableObj* obj = it->ptr();
+					if (multi->printObj("").find("<drawableCompound:plane>") == 0) {
+						cout << multi->printObj("") << endl;
+						cout << "plane part " << obj->getBoundingBoxUpper().x << endl;
+						cout << "plane part " << obj->getBoundingBoxUpper().y << endl;
+						cout << "plane part " << obj->getBoundingBoxUpper().z << endl;
+					}
 					if (insideCustomBoundingBox(loc4, multi->getModelMatrix(), obj, is2d)) {
 						_xVelocity = 0, _yVelocity = 0, _zVelocity = 0;
 					}
