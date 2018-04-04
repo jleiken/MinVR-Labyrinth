@@ -34,7 +34,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # add a target to generate API documentation with Doxygen
-#find_package(Doxygen)
+find_package(Doxygen)
 
 option(BUILD_DOCUMENTATION "If enabled, will create and install the HTML based API documentation (requires Doxygen)")
 

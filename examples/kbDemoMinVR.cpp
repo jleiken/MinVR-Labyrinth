@@ -270,7 +270,7 @@ public:
 		// if (event.getName() != "FrameStart") {
 		// 	std::cout << "Hearing event:" << event << std::endl;
 		// }
-		if (event.getName().find("Wand_Move") != -1 && _inited) {
+		if (event.getName().find("Wand") != -1 && event.getName().find("Move") && _inited) {
 			// the user is holding the activate tilt button and is moving
 			MinVR::VRFloatArray arr = event.getValue("Transform");
 			// apply all transformations
