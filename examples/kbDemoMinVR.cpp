@@ -270,7 +270,7 @@ public:
 		// if (event.getName() != "FrameStart") {
 		// 	std::cout << "Hearing event:" << event << std::endl;
 		// }
-		if (event.getName() == "Wand_Move" && _inited) {
+		if (event.getName().find("Wand_Move") != -1 && _inited) {
 			// the user is holding the activate tilt button and is moving
 			MinVR::VRFloatArray arr = event.getValue("Transform");
 			// apply all transformations
@@ -338,7 +338,7 @@ public:
 			loc4.z = loc.z;
 
 			// check if the ball has fallen into the board
-			for (auto comp = _board->begin(); comp != _board->end(); comp++) {
+			for (bsg::drawableCollection::iterator comp = _board->begin(); comp != _board->end(); comp++) {
 				bsg::bsgPtr<bsg::drawableMulti> multi = comp->second;
 				bsg::DrawableObjList lst = multi->getDrawableObjList();
 				bool is2d = multi->printObj("").find("square") != 0 
@@ -347,7 +347,7 @@ public:
 				if (multi->printObj("").find("<drawableCompound:plane>") == 0) {
 					cout << "start" << endl;
 				}
-				for (auto it = lst.begin(); it != lst.end(); it++) {
+				for (bsg::DrawableObjList::iterator it = lst.begin(); it != lst.end(); it++) {
 					bsg::drawableObj* obj = it->ptr();
 					if (multi->printObj("").find("<drawableCompound:plane>") == 0) {
 						cout << multi->printObj("") << endl;
