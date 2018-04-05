@@ -31,6 +31,7 @@ private:
 	float _yVelocity;
 	float _zVelocity;
 	bool _inited;
+	bool _isMoving;
 
 	// Helpful constants
 	float _BOARD_X_OFFSET, _BOARD_Y_OFFSET, _BOARD_Z_OFFSET;
@@ -166,6 +167,7 @@ private:
 		winTexture->readFile(bsg::texturePNG, "../data/win.png");
 		_winShader->addTexture(winTexture);
 		x_offset = rand() % 25;
+		y_offset = 0.2f;
 		z_offset = rand() % 25;
 		_win = new bsg::drawableSquare(_winShader, 25, 
 				glm::vec3(-15.0f + x_offset, y_offset, -15.0f + z_offset),
@@ -262,6 +264,7 @@ public:
 		_NUM_WALLS = 80;
 		_NUM_HOLES = 10;
 		_inited = false;
+		_isMoving = true;
 	}
 
 	/// The MinVR apparatus invokes this method whenever there is a new
@@ -322,41 +325,42 @@ public:
 	/// last time it was drawn.
 	void onVRRenderScene(const VRState &renderState) {
 			// Make the ball fall
-			glm::vec3 loc = _ball->getPosition();
-			loc.x += _xVelocity;
-			loc.y += _yVelocity;
-			loc.z += _zVelocity;
-			_ball->setPosition(loc.x, loc.y, loc.z);
-			glm::vec3 boardRot = _board->getPitchYawRoll();
-			_xVelocity += (-boardRot.x * 0.010);
-			_yVelocity -= 0.005f;
-			_zVelocity += (boardRot.z * 0.010);
+			if (_isMoving) {
+				glm::vec3 loc = _ball->getPosition();
+				loc.x += _xVelocity;
+				loc.y += _yVelocity;
+				loc.z += _zVelocity;
+				_ball->setPosition(loc.x, loc.y, loc.z);
+				glm::vec3 boardRot = _board->getPitchYawRoll();
+				_xVelocity += (-boardRot.x * 0.010);
+				_yVelocity -= 0.005f;
+				_zVelocity += (boardRot.z * 0.010);
 
-			glm::vec4 loc4;
-			loc4.x = loc.x;
-			loc4.y = loc.y;
-			loc4.z = loc.z;
+				glm::vec4 loc4;
+				loc4.x = loc.x;
+				loc4.y = loc.y;
+				loc4.z = loc.z;
 
-			// check if the ball has fallen into the board
-			for (bsg::drawableCollection::iterator comp = _board->begin(); comp != _board->end(); comp++) {
-				bsg::bsgPtr<bsg::drawableMulti> multi = comp->second;
-				bsg::DrawableObjList lst = multi->getDrawableObjList();
-				bool is2d = multi->printObj("").find("square") != 0 
-						 || multi->printObj("").find("circle") != 0
-						 || multi->printObj("").find("plane") != 0;
-				if (multi->printObj("").find("<drawableCompound:plane>") == 0) {
-					cout << "start" << endl;
-				}
-				for (bsg::DrawableObjList::iterator it = lst.begin(); it != lst.end(); it++) {
-					bsg::drawableObj* obj = it->ptr();
-					if (multi->printObj("").find("<drawableCompound:plane>") == 0) {
-						cout << multi->printObj("") << endl;
-						cout << "plane part " << obj->getBoundingBoxUpper().x << endl;
-						cout << "plane part " << obj->getBoundingBoxUpper().y << endl;
-						cout << "plane part " << obj->getBoundingBoxUpper().z << endl;
-					}
-					if (insideCustomBoundingBox(loc4, multi->getModelMatrix(), obj, is2d)) {
-						_xVelocity = 0, _yVelocity = 0, _zVelocity = 0;
+				// check if the ball has fallen into the board
+				for (bsg::drawableCollection::iterator comp = _board->begin(); comp != _board->end(); comp++) {
+					bsg::bsgPtr<bsg::drawableMulti> multi = comp->second;
+					bsg::DrawableObjList lst = multi->getDrawableObjList();
+					bool isWin = multi->printObj("").find("square") != -1;
+					bool isHole = multi->printObj("").find("circle") != -1;
+					bool is2d =  isWin || isHole || multi->printObj("").find("plane") != -1;
+					for (bsg::DrawableObjList::iterator it = lst.begin(); it != lst.end(); it++) {
+						bsg::drawableObj* obj = it->ptr();
+						if (insideCustomBoundingBox(loc4, multi->getModelMatrix(), obj, is2d)) {
+							if (isWin || isHole) {
+								_isMoving = false;
+							}
+							if (isWin) {
+								_ball->setPosition(_BOARD_X_OFFSET, _BOARD_Y_OFFSET + 10, _BOARD_Z_OFFSET);
+							} else if (isHole) {
+								_ball->setPosition(_BOARD_X_OFFSET, _BOARD_Y_OFFSET - 10, _BOARD_Z_OFFSET);
+							}
+							_xVelocity = 0, _yVelocity = 0, _zVelocity = 0;
+						}
 					}
 				}
 			}
