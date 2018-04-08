@@ -135,16 +135,17 @@ private:
 		bsg::bsgPtr<bsg::textureMgr> boardTexture = new bsg::textureMgr();
 		boardTexture->readFile(bsg::texturePNG, "../data/board.png");
 		_boardShader->addTexture(boardTexture);
+		glm::vec4 boardColor = glm::vec4(0.549f, 0.408f, 0.263f, 1);
 
 		_board = new bsg::drawableCollection();
 
 		int x_offset, z_offset;
 		for (int i = 0; i < _NUM_WALLS; i++) {
-			bsg::drawableObjModel* x =
-				new bsg::drawableObjModel(_boardShader, "../data/mid-wall.obj");
-			x_offset = rand() % 30;
-			z_offset = rand() % 30;
-			x->setPosition(-15.0f + x_offset, 0, -15.0f + z_offset);
+			bsg::drawableCube* x = new bsg::drawableCube(_boardShader, 25, boardColor);
+			x->setScale(glm::vec3(1, 2, 1));
+			x_offset = rand() % 28;
+			z_offset = rand() % 28;
+			x->setPosition(-14.0f + x_offset, 1, -14.0f + z_offset);
 			_board->addObject(x);
 		}
 
@@ -157,9 +158,9 @@ private:
 		for (int i = 0; i < _NUM_HOLES; i++) {
 			bsg::drawableCircle* x = new bsg::drawableCircle(_holeShader, 25, 1.0f, 0);
 			x->setScale(glm::vec3(2.0f, 1.0f, 2.0f));
-			x_offset = rand() % 25;
-			z_offset = rand() % 25;
-			x->setPosition(-15.0f + x_offset, y_offset, -15.0f + z_offset);
+			x_offset = rand() % 28;
+			z_offset = rand() % 28;
+			x->setPosition(-14.0f + x_offset, y_offset, -14.0f + z_offset);
 			_board->addObject(x);
 		}
 
@@ -170,14 +171,35 @@ private:
 		y_offset = 0.2f;
 		z_offset = rand() % 25;
 		_win = new bsg::drawableSquare(_winShader, 25, 
-				glm::vec3(-15.0f + x_offset, y_offset, -15.0f + z_offset),
-				glm::vec3(-15.0f + x_offset, y_offset, -15.0f + z_offset + 5),
-				glm::vec3(-15.0f + x_offset + 5, y_offset, -15.0f + z_offset),
+				glm::vec3(-13.0f + x_offset, y_offset, -13.0f + z_offset),
+				glm::vec3(-13.0f + x_offset, y_offset, -13.0f + z_offset + 5),
+				glm::vec3(-13.0f + x_offset + 5, y_offset, -13.0f + z_offset),
 				glm::vec4(0, 1, 0, 1));
 		_board->addObject(_win);
 
 		// Add the board outline and the 3D base so coliders work
- 		bsg::drawableObjModel* labPlane = new bsg::drawableObjModel(_boardShader, "../data/lab-plane.obj");
+ 		bsg::drawableCube* wWall = new bsg::drawableCube(_boardShader, 25, boardColor);
+		wWall->setPosition(-15, 1, 0);
+		wWall->setScale(glm::vec3(1, 2, 30));
+		wWall->setRotation(0, 0, 0);
+		_board->addObject(wWall);
+		bsg::drawableCube* eWall = new bsg::drawableCube(_boardShader, 25, boardColor);
+		eWall->setPosition(15, 1, 0);
+		eWall->setScale(glm::vec3(1, 2, 30));
+		_board->addObject(eWall);
+		bsg::drawableCube* sWall = new bsg::drawableCube(_boardShader, 25, boardColor);
+		sWall->setPosition(0, 1, 15);
+		sWall->setScale(glm::vec3(31, 2, 1));
+		_board->addObject(sWall);
+		bsg::drawableCube* nWall = new bsg::drawableCube(_boardShader, 25, boardColor);
+		nWall->setPosition(0, 1, -15);
+		nWall->setScale(glm::vec3(31, 2, 1));
+		_board->addObject(nWall);
+		bsg::drawableSquare* labPlane = new bsg::drawableSquare(_boardShader, 25,
+										glm::vec3(-16, 0, -15),
+										glm::vec3(-15, 0, 15),
+										glm::vec3(15, 0, -15),
+										boardColor);
 		labPlane->setName("plane");
 		labPlane->setPosition(0, 0, 0);
 		_board->addObject(labPlane);
