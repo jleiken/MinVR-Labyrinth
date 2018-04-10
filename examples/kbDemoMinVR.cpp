@@ -303,6 +303,8 @@ public:
 		// if (event.getName() != "FrameStart") {
 		// 	std::cout << "Hearing event:" << event << std::endl;
 		// }
+		if (event.getName().find("Wand") != -1 && event.getName().find("Joystick") == -1) {
+		}
 		if (event.getName().find("Wand") != -1 && event.getName().find("Move") && _inited) {
 			// the user is holding the activate tilt button and is moving
 			MinVR::VRFloatArray arr = event.getValue("Transform");
@@ -316,7 +318,10 @@ public:
 								arr[13]+WAND_Y_OFFSET,
 								arr[14]+WAND_Z_OFFSET);
 			// rotation is at 0,1,2 and 4,5,6 and 8,9,10?
-			glm::vec3 rot = glm::vec3(atan2(mat[1][0], mat[0][0]), atan2(-mat[2][0], sqrt(mat[2][1] * mat[2][1] + mat[2][2] * mat[2][2])), atan2(mat[2][1], mat[2][2]));;
+			glm::vec3 rot = glm::vec3(atan2(mat[1][0], mat[0][0]), atan2(-mat[2][0], sqrt(mat[2][1] * mat[2][1] + mat[2][2] * mat[2][2])), atan2(mat[2][1], mat[2][2]));
+			float actualZ = -rot.x;
+			rot.x = -rot.z;
+			rot.z = actualZ;
 			// float x = _keepRotationLow(rot.x);
 			// float y = _keepRotationLow(rot.y);
 			// float z = _keepRotationLow(rot.z);
