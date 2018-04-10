@@ -34,8 +34,9 @@ private:
 	bool _isMoving;
 
 	// Helpful constants
-	float _BOARD_X_OFFSET, _BOARD_Y_OFFSET, _BOARD_Z_OFFSET;
-	float _WAND_X_OFFSET, _WAND_Y_OFFSET, _WAND_Z_OFFSET;
+	float BOARD_X_OFFSET, BOARD_Y_OFFSET, BOARD_Z_OFFSET;
+	float WAND_X_OFFSET, WAND_Y_OFFSET, WAND_Z_OFFSET;
+	float GRAVITY;
 	int _NUM_HOLES;
 	int _NUM_WALLS;
 
@@ -104,11 +105,11 @@ private:
 		bsg::bsgPtr<bsg::lightList> _lights = new bsg::lightList();
 
 		// Create a list of lights
-		_lights->addLight(glm::vec4(_BOARD_X_OFFSET, _BOARD_Y_OFFSET + 15, _BOARD_Z_OFFSET, 1.0f),
+		_lights->addLight(glm::vec4(BOARD_X_OFFSET, BOARD_Y_OFFSET + 15, BOARD_Z_OFFSET, 1.0f),
 						  glm::vec4(1.0f, 1.0f, 1.0f, 0.0f));
-		_lights->addLight(glm::vec4(_BOARD_X_OFFSET - 5, _BOARD_Y_OFFSET + 15, _BOARD_Z_OFFSET - 5, 1.0f),
+		_lights->addLight(glm::vec4(BOARD_X_OFFSET - 5, BOARD_Y_OFFSET + 15, BOARD_Z_OFFSET - 5, 1.0f),
 						  glm::vec4(1.0f, 1.0f, 1.0f, 0.0f));
-		_lights->addLight(glm::vec4(_BOARD_X_OFFSET + 5, _BOARD_Y_OFFSET + 15, _BOARD_Z_OFFSET + 5, 1.0f),
+		_lights->addLight(glm::vec4(BOARD_X_OFFSET + 5, BOARD_Y_OFFSET + 15, BOARD_Z_OFFSET + 5, 1.0f),
 						  glm::vec4(1.0f, 1.0f, 1.0f, 0.0f));
 
 		_boardShader->addLights(_lights);
@@ -204,7 +205,7 @@ private:
 		labPlane->setPosition(0, 0, 0);
 		_board->addObject(labPlane);
 
-		_board->setPosition(_BOARD_X_OFFSET, _BOARD_Y_OFFSET, _BOARD_Z_OFFSET);
+		_board->setPosition(BOARD_X_OFFSET, BOARD_Y_OFFSET, BOARD_Z_OFFSET);
 		_board->setRotation(0, 0, 0);
 		_scene.addObject(_board);
 
@@ -217,7 +218,7 @@ private:
 		z_offset = (rand() % 20) - 10;
 		_ball = new bsg::drawableSphere(_ballShader, 25, 25, glm::vec4(0.5f, 0.5f, 0.5f, 0.0f));
 		_ball->setScale(glm::vec3(1.5f, 1.5f, 1.5f));
-		_ball->setPosition(_BOARD_X_OFFSET + x_offset, _BOARD_Y_OFFSET + 10, _BOARD_Z_OFFSET + z_offset);
+		_ball->setPosition(BOARD_X_OFFSET + x_offset, BOARD_Y_OFFSET + 10, BOARD_Z_OFFSET + z_offset);
 		_scene.addObject(_ball);
 
 		// set inited to true so other functions know we've been initialized
@@ -234,6 +235,16 @@ private:
 		}
 	}
 
+	void loser(void) {
+		_ball->setPosition(BOARD_X_OFFSET, BOARD_Y_OFFSET - 15, BOARD_Z_OFFSET);
+		_isMoving = false;
+	}
+
+	void winner(void) {
+		_ball->setPosition(BOARD_X_OFFSET, BOARD_Y_OFFSET + 10, BOARD_Z_OFFSET);
+		_isMoving = false;
+	}
+
 	bool insideCustomBoundingBox(const glm::vec4 &testPoint,
 								 glm::mat4 modelMatrix,
                                  bsg::drawableObj* obj,
@@ -242,17 +253,13 @@ private:
 		glm::vec4 upper = modelMatrix * obj->getBoundingBoxUpper();
 
 		if (is2dObj) {
-			// if (isPlane) {
-			// 	cout << "low y: " << lower.y << " up y: " << upper.y << endl;
-			// 	cout << " ball y: " << testPoint.y << endl;
-			// }
 			return
 				(testPoint.x <= upper.x) &&
 				(testPoint.x >= lower.x) &&
 				(testPoint.z <= upper.z) &&
 				(testPoint.z >= lower.z) &&
-				((std::abs(testPoint.y - lower.y) < 1) || 
-				(std::abs(testPoint.y - upper.y) < 1));
+				((std::abs(testPoint.y - lower.y) <= 0.75) || 
+				(std::abs(testPoint.y - upper.y) <= 0.75));
 		} else {
 			return
 				(testPoint.x <= upper.x) &&
@@ -277,12 +284,13 @@ public:
 		_oscillator = 0.0f;
 		_yVelocity = 0.0f;
 
-		_BOARD_X_OFFSET = -5.0;
-		_BOARD_Y_OFFSET = -10.0;
-		_BOARD_Z_OFFSET = -20.0;
-		_WAND_X_OFFSET = -10.0;
-		_WAND_Y_OFFSET = -12.0;
-		_WAND_Z_OFFSET = -35.0;
+		BOARD_X_OFFSET = -5.0;
+		BOARD_Y_OFFSET = -10.0;
+		BOARD_Z_OFFSET = -20.0;
+		WAND_X_OFFSET = -10.0;
+		WAND_Y_OFFSET = -12.0;
+		WAND_Z_OFFSET = -35.0;
+		GRAVITY = 0.005f;
 		_NUM_WALLS = 80;
 		_NUM_HOLES = 10;
 		_inited = false;
@@ -298,15 +306,21 @@ public:
 		if (event.getName().find("Wand") != -1 && event.getName().find("Move") && _inited) {
 			// the user is holding the activate tilt button and is moving
 			MinVR::VRFloatArray arr = event.getValue("Transform");
+			glm::mat4 mat = glm::mat4(arr[0], arr[1], arr[2], arr[3],
+									  arr[4], arr[5], arr[6], arr[7],
+									  arr[8], arr[9], arr[10], arr[11],
+									  arr[12], arr[13], arr[14], arr[15]);
 			// apply all transformations
 			// positions are at 12,13,14
-			_board->setPosition(arr[12]+_WAND_X_OFFSET,
-								arr[13]+_WAND_Y_OFFSET,
-								arr[14]+_WAND_Z_OFFSET);
+			_board->setPosition(arr[12]+WAND_X_OFFSET,
+								arr[13]+WAND_Y_OFFSET,
+								arr[14]+WAND_Z_OFFSET);
 			// rotation is at 0,1,2 and 4,5,6 and 8,9,10?
-			float x = _keepRotationLow(arr[8]);
-			float z = _keepRotationLow(arr[0]);
-			_board->setRotation(x, 0, z);
+			glm::vec3 rot = glm::vec3(atan2(mat[1][0], mat[0][0]), atan2(-mat[2][0], sqrt(mat[2][1] * mat[2][1] + mat[2][2] * mat[2][2])), atan2(mat[2][1], mat[2][2]));;
+			// float x = _keepRotationLow(rot.x);
+			// float y = _keepRotationLow(rot.y);
+			// float z = _keepRotationLow(rot.z);
+			_board->setRotation(rot);
 		} else if (event.getName() == "KbdEsc_Down") {
 			// Quit if the escape button is pressed
 			shutdown();
@@ -354,9 +368,13 @@ public:
 				loc.z += _zVelocity;
 				_ball->setPosition(loc.x, loc.y, loc.z);
 				glm::vec3 boardRot = _board->getPitchYawRoll();
-				_xVelocity += (-boardRot.x * 0.010);
-				_yVelocity -= 0.005f;
-				_zVelocity += (boardRot.z * 0.010);
+				float sinX = sin(boardRot.x), sinZ = sin(boardRot.z);
+				if (sinX != 0) {
+					_xVelocity += (sinX - GRAVITY)*0.1;
+				} else if (sinZ != 0) {
+					_zVelocity += (sinZ - GRAVITY)*0.1;
+				}
+				_yVelocity -= GRAVITY;
 
 				glm::vec4 loc4;
 				loc4.x = loc.x;
@@ -369,22 +387,29 @@ public:
 					bsg::DrawableObjList lst = multi->getDrawableObjList();
 					bool isWin = multi->printObj("").find("square") != -1;
 					bool isHole = multi->printObj("").find("circle") != -1;
-					bool is2d =  isWin || isHole || multi->printObj("").find("plane") != -1;
+					bool isPlane = multi->printObj("").find("plane") != -1;
+					bool is2d =  isWin || isHole || isPlane;
 					for (bsg::DrawableObjList::iterator it = lst.begin(); it != lst.end(); it++) {
 						bsg::drawableObj* obj = it->ptr();
 						if (insideCustomBoundingBox(loc4, multi->getModelMatrix(), obj, is2d)) {
-							if (isWin || isHole) {
-								_isMoving = false;
+							if (isPlane) {
+								_yVelocity = 0;
+								// glm::vec3 ballPos = _ball->getPosition();
+								// _ball->setPosition(ballPos.x, multi->getPosition().y, ballPos.z);
+							} else {
+								_xVelocity = 0, _zVelocity = 0;
 							}
 							if (isWin) {
-								_ball->setPosition(_BOARD_X_OFFSET, _BOARD_Y_OFFSET + 10, _BOARD_Z_OFFSET);
+								winner();
 							} else if (isHole) {
-								_ball->setPosition(_BOARD_X_OFFSET, _BOARD_Y_OFFSET - 10, _BOARD_Z_OFFSET);
+								loser();
 							}
-							_xVelocity = 0, _yVelocity = 0, _zVelocity = 0;
 						}
 					}
 				}
+			}
+			if (_ball->getPosition().y < -30) {
+				loser();
 			}
 
 			// Now draw the scene
