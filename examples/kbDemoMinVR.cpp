@@ -30,8 +30,10 @@ private:
 	float _xVelocity;
 	float _yVelocity;
 	float _zVelocity;
-	bool _inited;
-	bool _isMoving;
+	bool _inited, _isMoving, _tiltButton, _moveButton;
+
+	// Change this (I didn't want to use compiler flags) based on the device
+	bool _isYurt;
 
 	// Helpful constants
 	float BOARD_X_OFFSET, BOARD_Y_OFFSET, BOARD_Z_OFFSET;
@@ -295,15 +297,29 @@ public:
 		_NUM_HOLES = 10;
 		_inited = false;
 		_isMoving = true;
+		_isYurt = false;
+		_tiltButton = !_isYurt; /* initially set to false on the YURT because the triggers need
+			to be pressed for movement in there, on desktop they don't */
+		_moveButton = !_isYurt;
 	}
 
 	/// The MinVR apparatus invokes this method whenever there is a new
 	/// event to process.
 	void onVREvent(const MinVR::VREvent &event) {
-		// if (event.getName() != "FrameStart") {
-		// 	std::cout << "Hearing event:" << event << std::endl;
-		// }
-		if (event.getName().find("Wand") != -1 && event.getName().find("Joystick") == -1) {
+		if (_isYurt) {
+			if (event.getName().find("Wand_Left_Btn") != -1 && event.getName().find("Down") != -1) {
+				cout << "left down" << endl;
+				_tiltButton = true;
+			} else if (event.getName().find("Wand_Left_Btn") != -1 && event.getName().find("Up") != -1) {
+				cout << "left up" << endl;
+				_tiltButton = false;
+			} else if (event.getName().find("Wand_Right_Btn") != -1 && event.getName().find("Down") != -1) {
+				cout << "right down" << endl;
+				_moveButton = true;
+			} else if (event.getName().find("Wand_Right_Btn") != -1 && event.getName().find("Up") != -1) {
+				cout << "right up" << endl;
+				_moveButton = false;
+			}
 		}
 		if (event.getName().find("Wand") != -1 && event.getName().find("Move") && _inited) {
 			// the user is holding the activate tilt button and is moving
@@ -314,18 +330,19 @@ public:
 									  arr[12], arr[13], arr[14], arr[15]);
 			// apply all transformations
 			// positions are at 12,13,14
-			_board->setPosition(arr[12]+WAND_X_OFFSET,
-								arr[13]+WAND_Y_OFFSET,
-								arr[14]+WAND_Z_OFFSET);
+			if (_moveButton) {
+				_board->setPosition(arr[12]+WAND_X_OFFSET,
+									arr[13]+WAND_Y_OFFSET,
+									arr[14]+WAND_Z_OFFSET);
+			}
 			// rotation is at 0,1,2 and 4,5,6 and 8,9,10?
-			glm::vec3 rot = glm::vec3(atan2(mat[1][0], mat[0][0]), atan2(-mat[2][0], sqrt(mat[2][1] * mat[2][1] + mat[2][2] * mat[2][2])), atan2(mat[2][1], mat[2][2]));
-			float actualZ = -rot.x;
-			rot.x = -rot.z;
-			rot.z = actualZ;
-			// float x = _keepRotationLow(rot.x);
-			// float y = _keepRotationLow(rot.y);
-			// float z = _keepRotationLow(rot.z);
-			_board->setRotation(rot);
+			if (_tiltButton) {
+				glm::vec3 rot = glm::vec3(atan2(mat[1][0], mat[0][0]), atan2(-mat[2][0], sqrt(mat[2][1] * mat[2][1] + mat[2][2] * mat[2][2])), atan2(mat[2][1], mat[2][2]));
+				float actualZ = -rot.x;
+				rot.x = -rot.z;
+				rot.z = actualZ;
+				_board->setRotation(rot);
+			}
 		} else if (event.getName() == "KbdEsc_Down") {
 			// Quit if the escape button is pressed
 			shutdown();
