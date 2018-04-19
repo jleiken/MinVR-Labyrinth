@@ -6,15 +6,12 @@
 
 class DemoVRApp: public MVRDemo {
 
-	// Data values that were global in the demo2.cpp file are defined as
-	// private members of the VRApp.
 private:
 
+	// The scene can be thought of as the main container of everything
 	bsg::scene _scene;
 
-	// These are the shapes that make up the scene.  They are out here in
-	// the global variables so they can be available in both the main()
-	// function and the renderScene() function.
+	// These are the shapes that make up the scene that need to be references outside the scene animator
 	bsg::drawableCollection* _board;
 	bsg::drawableSphere* _ball;
 	bsg::drawableSquare* _win;
@@ -23,9 +20,7 @@ private:
 	std::string _vertexFile;
 	std::string _fragmentFile;
 
-	// These are part of the animation stuff, and again are out here with
-	// the big boy global variables so they can be available to both the
-	// interrupt handler and the render function.
+	// These are other global variables
 	float _oscillator;
 	float _xVelocity;
 	float _yVelocity;
@@ -35,7 +30,7 @@ private:
 	// Change this (I didn't want to use compiler flags) based on the device
 	bool _isYurt;
 
-	// Helpful constants
+	// Constants
 	float BOARD_X_OFFSET, BOARD_Y_OFFSET, BOARD_Z_OFFSET;
 	float WAND_X_OFFSET, WAND_Y_OFFSET, WAND_Z_OFFSET;
 	float GRAVITY;
@@ -43,7 +38,7 @@ private:
 	int _NUM_WALLS;
 
 	// This contains a bunch of sanity checks from the graphics
-	// initialization of demo2.cpp.  They are still useful with MinVR.
+	// initialization of demo-graphic. Basically just include this in any MinVR app
 	void _checkContext() {
 		glewExperimental = true; // Needed for core profile
 		if (glewInit() != GLEW_OK) {
@@ -84,22 +79,11 @@ private:
 		glEnable(GL_LINE_SMOOTH);
 	}
 
-	// Just a little debug function so that a user can see what's going on
-	// in a non-graphical sense.
-	void _showCameraPosition() {
-
-		std::cout << "Camera is at ("
-							<< _scene.getCameraPosition().x << ", "
-							<< _scene.getCameraPosition().y << ", "
-							<< _scene.getCameraPosition().z << ")... ";
-		std::cout << "looking at ("
-							<< _scene.getLookAtPosition().x << ", "
-							<< _scene.getLookAtPosition().y << ", "
-							<< _scene.getLookAtPosition().z << ")." << std::endl;
-	}
-
+	// Basically the graphics constructor. Sets up the scene.
 	void _initializeScene() {
 		// initialize the shaders and lights
+		// Shaders basically color and give texture to objects
+		// Lights are what they sound like
 		bsg::bsgPtr<bsg::shaderMgr> _boardShader = new bsg::shaderMgr();
 		bsg::bsgPtr<bsg::shaderMgr> _holeShader = new bsg::shaderMgr();
 		bsg::bsgPtr<bsg::shaderMgr> _winShader = new bsg::shaderMgr();
@@ -114,11 +98,15 @@ private:
 		_lights->addLight(glm::vec4(BOARD_X_OFFSET + 5, BOARD_Y_OFFSET + 15, BOARD_Z_OFFSET + 5, 1.0f),
 						  glm::vec4(1.0f, 1.0f, 1.0f, 0.0f));
 
+		// Add the lights to the shaders
 		_boardShader->addLights(_lights);
 		_holeShader->addLights(_lights);
 		_winShader->addLights(_lights);
 		_ballShader->addLights(_lights);
 
+		// Add these plain vertex and fragment files to the shaders. I don't know exactly how shaders work
+		// in general, but these vertex and fragment files will make the colors passed into the bsg
+		// objects display correctly
 		_boardShader->addShader(bsg::GLSHADER_VERTEX, _vertexFile);
 		_boardShader->addShader(bsg::GLSHADER_FRAGMENT, _fragmentFile);
 		_holeShader->addShader(bsg::GLSHADER_VERTEX, _vertexFile);
@@ -138,11 +126,16 @@ private:
 		bsg::bsgPtr<bsg::textureMgr> boardTexture = new bsg::textureMgr();
 		boardTexture->readFile(bsg::texturePNG, "../data/board.png");
 		_boardShader->addTexture(boardTexture);
+		// This is the same color as the png. Probably unecessary, but it works
 		glm::vec4 boardColor = glm::vec4(0.549f, 0.408f, 0.263f, 1);
 
+		// Initialize the collection that will contain rectangles that make the board
 		_board = new bsg::drawableCollection();
 
+		// x and z offsets will be random but I only initialize these variables once
+		// to save space. It's not actually an issue on modern machines but might as well.
 		int x_offset, z_offset;
+		// This loop creates and places (randomly) all the walls inside the board
 		for (int i = 0; i < _NUM_WALLS; i++) {
 			bsg::drawableCube* x = new bsg::drawableCube(_boardShader, 25, boardColor);
 			x->setScale(glm::vec3(1, 2, 1));
@@ -157,7 +150,10 @@ private:
 		holeTexture->readFile(bsg::texturePNG, "../data/hole.png");
 		_holeShader->addTexture(holeTexture);
 
+		// y offset for 2D objects so they don't flicker (it happens when they're at exactly the same 
+		// height as the board because the computer doesn't know which to render)
 		float y_offset = 0.1f;
+		// This loop creates and places (randomly) all the holes to be in the board
 		for (int i = 0; i < _NUM_HOLES; i++) {
 			bsg::drawableCircle* x = new bsg::drawableCircle(_holeShader, 25, 1.0f, 0);
 			x->setScale(glm::vec3(2.0f, 1.0f, 2.0f));
@@ -167,6 +163,8 @@ private:
 			_board->addObject(x);
 		}
 
+		// Add a texture to the winner's square and place it randomly. This is what
+		// people roll onto to win the game
 		bsg::bsgPtr<bsg::textureMgr> winTexture = new bsg::textureMgr();
 		winTexture->readFile(bsg::texturePNG, "../data/win.png");
 		_winShader->addTexture(winTexture);
@@ -180,7 +178,7 @@ private:
 				glm::vec4(0, 1, 0, 1));
 		_board->addObject(_win);
 
-		// Add the board outline and the 3D base so coliders work
+		// Add the board itself. This is the four walls and the base.
  		bsg::drawableCube* wWall = new bsg::drawableCube(_boardShader, 25, boardColor);
 		wWall->setPosition(-15, 1, 0);
 		wWall->setScale(glm::vec3(1, 2, 30));
@@ -207,15 +205,17 @@ private:
 		labPlane->setPosition(0, 0, 0);
 		_board->addObject(labPlane);
 
+		// Set the actual board collection. It has to be at the offset to be in front of the viewer at startup
 		_board->setPosition(BOARD_X_OFFSET, BOARD_Y_OFFSET, BOARD_Z_OFFSET);
 		_board->setRotation(0, 0, 0);
 		_scene.addObject(_board);
 
-		// make a new shader for the ball
+		// make the shader for the ball
 		bsg::bsgPtr<bsg::textureMgr> ballTexture = new bsg::textureMgr();
 		ballTexture->readFile(bsg::texturePNG, "../data/ball.png");
 		_ballShader->addTexture(ballTexture);
 
+		// place the ball randomly, but 10 pixels above the board so it falls (as a fun graphic/proof of gravity)
 		x_offset = (rand() % 20) - 10;
 		z_offset = (rand() % 20) - 10;
 		_ball = new bsg::drawableSphere(_ballShader, 25, 25, glm::vec4(0.5f, 0.5f, 0.5f, 0.0f));
@@ -227,26 +227,21 @@ private:
 		_inited = true;
 	}
 
-	float _keepRotationLow(float rot) {
-		if (rot < -0.33) {
-			return -0.33;
-		} else if (rot > 0.33) {
-			return 0.33;
-		} else {
-			return rot;
-		}
-	}
-
+	// Execute these animations when the player loses, for whatever reason
 	void loser(void) {
 		_ball->setPosition(BOARD_X_OFFSET, BOARD_Y_OFFSET - 15, BOARD_Z_OFFSET);
 		_isMoving = false;
 	}
 
+	// Execute these animations when the player wins
 	void winner(void) {
 		_ball->setPosition(BOARD_X_OFFSET, BOARD_Y_OFFSET + 10, BOARD_Z_OFFSET);
 		_isMoving = false;
 	}
 
+	// I had to define this (basically the same as the drawableObj function) to account
+	// for 2d objects. For some reason I've found it much more reliable than the
+	// built-in bsg functions called insideBoundingBox
 	bool insideCustomBoundingBox(const glm::vec4 &testPoint,
 								 glm::mat4 modelMatrix,
                                  bsg::drawableObj* obj,
@@ -275,9 +270,9 @@ private:
 
 
 public:
+	// Actual constructor of the game. Define all the constants
 	DemoVRApp(int argc, char** argv) 
 	: MVRDemo(argc, argv) {
-		// This is the root of the scene graph.
 		bsg::scene _scene = bsg::scene();
 
 		_vertexFile = "../shaders/textureShader.vp";
@@ -306,6 +301,8 @@ public:
 	/// The MinVR apparatus invokes this method whenever there is a new
 	/// event to process.
 	void onVREvent(const MinVR::VREvent &event) {
+		// If we're in the yurt, only move/tilt the board if buttons are pressed to go along with movement
+		// If we're on a desktop buttons already have to be pressed for it to tilt
 		if (_isYurt) {
 			if (event.getName().find("Wand_Left_Btn") != -1 && event.getName().find("Down") != -1) {
 				cout << "left down" << endl;
@@ -335,9 +332,10 @@ public:
 									arr[13]+WAND_Y_OFFSET,
 									arr[14]+WAND_Z_OFFSET);
 			}
-			// rotation is at 0,1,2 and 4,5,6 and 8,9,10?
+			// rotation is at 0,1,2 and 4,5,6 and 8,9,10
+			// This rotation method (which is great) was given to me by Zach Dixon (zdixon)
 			if (_tiltButton) {
-				glm::vec3 rot = glm::vec3(atan2(mat[1][0], mat[0][0]), atan2(-mat[2][0], sqrt(mat[2][1] * mat[2][1] + mat[2][2] * mat[2][2])), atan2(mat[2][1], mat[2][2]));
+				glm::vec3 rot = glm::vec3(atan2(mat[1][0], mat[0][0]), -atan2(-mat[2][0], sqrt(mat[2][1] * mat[2][1] + mat[2][2] * mat[2][2])), atan2(mat[2][1], mat[2][2]));
 				float actualZ = -rot.x;
 				rot.x = -rot.z;
 				rot.z = actualZ;
@@ -382,28 +380,25 @@ public:
 	/// re-draws the scene according to whatever has changed since the
 	/// last time it was drawn.
 	void onVRRenderScene(const VRState &renderState) {
-			// Make the ball fall
 			if (_isMoving) {
+				// Make the ball moved based on the current velocities
 				glm::vec3 loc = _ball->getPosition();
 				loc.x += _xVelocity;
 				loc.y += _yVelocity;
 				loc.z += _zVelocity;
+				// Set the position based on these movements
 				_ball->setPosition(loc.x, loc.y, loc.z);
-				glm::vec3 boardRot = _board->getPitchYawRoll();
-				float sinX = sin(boardRot.x), sinZ = sin(boardRot.z);
-				if (sinX != 0) {
-					_xVelocity += (sinX - GRAVITY)*0.1;
-				} else if (sinZ != 0) {
-					_zVelocity += (sinZ - GRAVITY)*0.1;
-				}
+				// Make the y velocity accelerate due to gravity
 				_yVelocity -= GRAVITY;
 
+				// needed for insideCustomBoundingBox
 				glm::vec4 loc4;
 				loc4.x = loc.x;
 				loc4.y = loc.y;
 				loc4.z = loc.z;
+				loc4.w = 1;
 
-				// check if the ball has fallen into the board
+				// Summary: check if the ball has fallen into things
 				for (bsg::drawableCollection::iterator comp = _board->begin(); comp != _board->end(); comp++) {
 					bsg::bsgPtr<bsg::drawableMulti> multi = comp->second;
 					bsg::DrawableObjList lst = multi->getDrawableObjList();
@@ -414,13 +409,21 @@ public:
 					for (bsg::DrawableObjList::iterator it = lst.begin(); it != lst.end(); it++) {
 						bsg::drawableObj* obj = it->ptr();
 						if (insideCustomBoundingBox(loc4, multi->getModelMatrix(), obj, is2d)) {
+							// If it's on the plane, we should add to the sideways velocities based on tilt
 							if (isPlane) {
 								_yVelocity = 0;
-								// glm::vec3 ballPos = _ball->getPosition();
-								// _ball->setPosition(ballPos.x, multi->getPosition().y, ballPos.z);
+								glm::vec3 boardRot = _board->getPitchYawRoll();
+								float sinX = sin(boardRot.x), sinZ = sin(boardRot.z);
+								if (sinX != 0) {
+									_xVelocity += (sinX - GRAVITY)*0.1;
+								} else if (sinZ != 0) {
+									_zVelocity += (sinZ - GRAVITY)*0.1;
+								}
 							} else {
+								// otherwise we're falling straight down or hit something, so stop
 								_xVelocity = 0, _zVelocity = 0;
 							}
+							// if the thing we just hit is a win square or hole, take the appropriate actions
 							if (isWin) {
 								winner();
 							} else if (isHole) {
@@ -430,6 +433,7 @@ public:
 					}
 				}
 			}
+			// If the ball has fallen very low, they lose
 			if (_ball->getPosition().y < -30) {
 				loser();
 			}
